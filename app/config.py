@@ -1,0 +1,34 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Tự động load biến môi trường từ file .env nếu có
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+class Settings:
+    PROJECT_NAME: str = "Thành Quý Music API"
+    VERSION: str = "1.0.0"
+    HOST: str = os.getenv("HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("PORT", "8000"))
+    DEBUG: bool = os.getenv("DEBUG", "True").lower() in ("true", "1")
+
+    # GitHub Storage Settings
+    GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
+    GITHUB_OWNER: str = os.getenv("GITHUB_OWNER", "")
+    GITHUB_REPO: str = os.getenv("GITHUB_REPO", "")
+    GITHUB_BRANCH: str = os.getenv("GITHUB_BRANCH", "main")
+
+    # Database Path (Luôn chuẩn hóa thành đường dẫn tuyệt đối)
+    _raw_db: str = os.getenv("DATABASE_PATH", "music.db")
+    DATABASE_PATH: str = str((BASE_DIR / _raw_db).resolve() if not Path(_raw_db).is_absolute() else Path(_raw_db).resolve())
+
+    # FFmpeg binary path (nếu cần custom)
+    FFMPEG_PATH: str = os.getenv("FFMPEG_PATH", "")
+
+    # Temporary directory for audio processing (sẽ được dọn sạch sau khi upload)
+    TEMP_DIR: Path = BASE_DIR / "temp"
+
+settings = Settings()
+settings.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Ecosystem - Admin Panel & Extractor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f1016;
+            --card-dark: #191b26;
+            --accent: #6c5ce7;
+            --accent-cyan: #00cec9;
+            --text-muted: #8b8ea3;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background-color: var(--card-dark);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .card {
+            background-color: var(--card-dark);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+        }
+        .form-control, .input-group-text {
+            background-color: #12131c;
+            border-color: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+        .form-control:focus {
+            background-color: #12131c;
+            color: #fff;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 0.25rem rgba(108, 92, 231, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-cyan));
+            border: none;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+        .song-cover {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .table {
+            color: #fff;
+        }
+        .table > :not(caption) > * > * {
+            background-color: transparent;
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+            vertical-align: middle;
+        }
+        .badge-source {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4 py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
+                <i class="bi bi-music-note-beamed text-info fs-4"></i>
+                <span>Music Ecosystem Admin</span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-success-subtle text-success border border-success">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i> GitHub CDN Connected
+                </span>
+                <a href="/docs" target="_blank" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-code-square me-1"></i> Swagger API
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <!-- Section: Bóc tách nhạc -->
+        <div class="card p-4 mb-4 shadow">
+            <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-cloud-arrow-down-fill text-info"></i>
+                Bóc Tách Nhạc TikTok / YouTube Lên GitHub Storage
+            </h5>
+            <p class="text-secondary small mb-3">
+                Dán đường dẫn YouTube (Video, Shorts, Playlist) hoặc TikTok. Hệ thống sẽ tự động bóc tách audio, convert MP3 128kbps qua FFmpeg, đẩy trực tiếp lên GitHub Repo, chuyển đổi URL sang jsDelivr CDN và dọn sạch file tạm trên server.
+            </p>
+            <form id="extractForm" class="row g-3">
+                <div class="col-md-7">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                        <input type="url" id="extractUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=... hoặc tiktok.com/..." required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="customTitle" class="form-control" placeholder="Tiêu đề tùy chọn (không bắt buộc)">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" id="btnExtract" class="btn btn-primary w-100 py-2">
+                        <i class="bi bi-lightning-charge-fill me-1"></i> Bóc Tách
+                    </button>
+                </div>
+            </form>
+            <div id="extractLoading" class="mt-3 d-none">
+                <div class="d-flex align-items-center gap-2 text-info">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <span id="extractStatusText">Đang xử lý yt-dlp, FFmpeg và commit lên GitHub...</span>
+                </div>
+            </div>
+            <div id="extractAlert" class="mt-3"></div>
+        </div>
+
+        <!-- Section: Danh sách bài hát & Tìm kiếm -->
+        <div class="card p-4 shadow">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-collection-play-fill text-warning"></i>
+                    Thư Viện Bài Hát Trong Cơ Sở Dữ Liệu
+                    <span id="songCountBadge" class="badge bg-secondary ms-2">0 bài</span>
+                </h5>
+                <div class="d-flex gap-2">
+                    <div class="input-group input-group-sm" style="width: 280px;">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Tìm kiếm tiếng Việt không dấu...">
+                    </div>
+                    <button id="btnRefresh" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr class="text-secondary small">
+                            <th>Ảnh</th>
+                            <th>Tiêu Đề</th>
+                            <th>Nghệ Sĩ</th>
+                            <th>Thời Lượng</th>
+                            <th>Nguồn</th>
+                            <th>CDN Stream</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="songTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-secondary">Đang tải danh sách bài hát...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Player Modal / Float -->
+    <div id="audioPlayerContainer" class="fixed-bottom p-3 d-none" style="background: rgba(18, 19, 28, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="container d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+                <img id="playerCover" class="song-cover" src="" alt="cover">
+                <div>
+                    <div id="playerTitle" class="fw-bold small">Title</div>
+                    <div id="playerArtist" class="text-secondary small">Artist</div>
+                </div>
+            </div>
+            <audio id="globalAudio" controls style="width: 50%;"></audio>
+            <button class="btn btn-sm btn-outline-secondary" onclick="closePlayer()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function formatDuration(sec) {
+            sec = parseInt(sec) || 0;
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        async function loadSongs(query = '') {
+            try {
+                let url = query ? `/api/songs/search?q=${encodeURIComponent(query)}&fallback=false` : '/api/songs?limit=100';
+                const res = await fetch(url);
+                const data = await res.json();
+                const songs = query ? (data.results || []) : data;
+
+                document.getElementById('songCountBadge').innerText = songs.length + ' bài';
+                const tbody = document.getElementById('songTableBody');
+
+                if (songs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-secondary">Không tìm thấy bài hát nào.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = songs.map(s => `
+                    <tr>
+                        <td>
+                            <img src="${s.cover_url || 'https://placehold.co/48x48/191b26/fff?text=MP3'}" class="song-cover" onerror="this.src='https://placehold.co/48x48/191b26/fff?text=MP3'">
+                        </td>
+                        <td class="fw-semibold">${s.title}</td>
+                        <td class="text-secondary">${s.artist}</td>
+                        <td class="text-secondary">${formatDuration(s.duration)}</td>
+                        <td>
+                            <span class="badge ${s.source_type === 'tiktok' ? 'bg-danger' : 'bg-danger-subtle text-danger border border-danger'} badge-source">
+                                ${s.source_type || 'web'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info" onclick="playAudio('${s.audio_url}', '${s.cover_url}', '${encodeURIComponent(s.title)}', '${encodeURIComponent(s.artist)}')">
+                                <i class="bi bi-play-circle-fill me-1"></i> Nghe thử
+                            </button>
+                            <a href="${s.audio_url}" target="_blank" class="btn btn-sm btn-link text-secondary" title="Mở jsDelivr CDN">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="${s.original_url}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Xem link gốc">
+                                <i class="bi bi-link-45deg"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function playAudio(url, cover, title, artist) {
+            const container = document.getElementById('audioPlayerContainer');
+            const audio = document.getElementById('globalAudio');
+            container.classList.remove('d-none');
+            document.getElementById('playerTitle').innerText = decodeURIComponent(title);
+            document.getElementById('playerArtist').innerText = decodeURIComponent(artist);
+            document.getElementById('playerCover').src = cover || 'https://placehold.co/48x48/191b26/fff?text=MP3';
+            audio.src = url;
+            audio.play();
+        }
+
+        function closePlayer() {
+            const audio = document.getElementById('globalAudio');
+            audio.pause();
+            document.getElementById('audioPlayerContainer').classList.add('d-none');
+        }
+
+        document.getElementById('extractForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('extractUrl').value.trim();
+            const customTitle = document.getElementById('customTitle').value.trim();
+            const loading = document.getElementById('extractLoading');
+            const alertDiv = document.getElementById('extractAlert');
+            const btn = document.getElementById('btnExtract');
+
+            if (!url) return;
+
+            loading.classList.remove('d-none');
+            btn.disabled = true;
+            alertDiv.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/admin/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, custom_title: customTitle || null })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    alertDiv.innerHTML = `
+                        <div class="alert alert-success d-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle-fill fs-5"></i>
+                            <div>
+                                <strong>Bóc tách thành công ${data.length} bài hát!</strong> Đã upload lên GitHub và phân phối qua jsDelivr CDN.
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('extractUrl').value = '';
+                    document.getElementById('customTitle').value = '';
+                    loadSongs();
+                } else {
+                    alertDiv.innerHTML = `
+                        <div class="alert alert-danger d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                            <div>Lỗi: ${data.detail || 'Không thể bóc tách link này'}</div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                alertDiv.innerHTML = `<div class="alert alert-danger">Lỗi kết nối máy chủ: ${err}</div>`;
+            } finally {
+                loading.classList.add('d-none');
+                btn.disabled = false;
+            }
+        });
+
+        let searchDebounce;
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                loadSongs(e.target.value.trim());
+            }, 400);
+        });
+
+        document.getElementById('btnRefresh').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            loadSongs();
+        });
+
+        // Tải dữ liệu ban đầu
+        loadSongs();
+    </script>
+</body>
+</html>
+
