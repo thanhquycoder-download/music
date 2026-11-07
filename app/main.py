@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import init_db
 from app.routers import admin, songs, ai
@@ -36,7 +37,6 @@ app.include_router(ai.router)
 
 ADMIN_HTML_PATH = Path(__file__).resolve().parent / "templates" / "admin.html"
 
-@app.get("/", response_class=HTMLResponse)
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel():
     """Giao diện Web Admin Panel bóc tách nhạc và quản lý bài hát."""
@@ -71,6 +71,11 @@ def check_app_version():
         "download_url_android": f"https://github.com/{owner}/{repo}/releases/latest/download/Thanh.Quy.Music.apk",
         "published_at": "2026-11-07"
     }
+
+# Phục vụ ứng dụng Thành Quý Music Web/PWA trực tiếp tại trang chủ
+WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+if WEB_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 
 if __name__ == "__main__":
     import uvicorn
