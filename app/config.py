@@ -36,6 +36,14 @@ class Settings:
     # Temporary directory for audio processing (sẽ được dọn sạch sau khi upload)
     TEMP_DIR: Path = BASE_DIR / "temp"
 
+    # Thư mục lưu trữ media cục bộ trên server (phục vụ fallback tức thì khi GitHub CDN token lỗi/hết hạn)
+    MEDIA_DIR: Path = BASE_DIR / "media"
+
+    # Server Base URL để phát nhạc trực tiếp
+    SERVER_BASE_URL: str = os.getenv("SERVER_BASE_URL", "https://music-dk2c.onrender.com").rstrip("/")
+
 settings = Settings()
 settings.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+settings.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+
 

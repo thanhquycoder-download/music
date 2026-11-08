@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+temp/
+media/
+data/music.db
+music.db
+*.log
