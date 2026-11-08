@@ -136,7 +136,7 @@ class MediaExtractorService:
                 return tiktok_result
         
         ydl_opts = {
-            'format': 'ba/best',
+            'format': 'ba[ext=m4a]/ba[ext=mp3]/ba/b[height<=360]/best',
             'outtmpl': str(self.temp_dir / '%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
@@ -152,11 +152,16 @@ class MediaExtractorService:
             },
         }
 
-        # Tự động phát hiện và thêm JavaScript runtime (Node.js) để giải mã YouTube signature
+        # Tự động phát hiện JavaScript runtime (Node.js) để giải mã chữ ký YouTube
         import shutil
-        node_exe = shutil.which("node") or r"C:\node-v24.19.0-win-x64\node.exe"
-        if os.path.exists(node_exe):
-            ydl_opts['js_runtimes'] = {'node': {'path': node_exe}}
+        node_bin = shutil.which("node")
+        if not node_bin:
+            for candidate in ["/usr/bin/node", "/usr/local/bin/node", r"C:\node-v24.19.0-win-x64\node.exe"]:
+                if os.path.exists(candidate):
+                    node_bin = candidate
+                    break
+        if node_bin:
+            ydl_opts['js_runtimes'] = {'node': {'path': node_bin}}
 
         results = []
 
