@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import List
+import uuid
+import requests
 from app.schemas import ExtractRequest, SongResponse
+
 from app.services.extractor import extractor_service
 from app.services.github_storage import github_storage
 from app.services.search_service import build_search_keywords
