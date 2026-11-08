@@ -21,9 +21,54 @@ def extract_media(request: ExtractRequest):
     6. Lưu siêu dữ liệu bài hát và jsDelivr CDN URLs vào Database.
     """
     try:
-        extracted_items = extractor_service.extract_and_download(request.url)
+        # Nếu client đã bóc tách direct MP3 URL từ TikWM (vượt qua Cloudflare bằng residential IP):
+        if request.direct_audio_url and request.direct_audio_url.startswith("http"):
+            import uuid
+            song_id = str(uuid.uuid4())
+            audio_file = extractor_service.temp_dir / f"{song_id}.mp3"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            }
+            with requests.get(request.direct_audio_url, headers=headers, stream=True, timeout=60) as r:
+                r.raise_for_status()
+                with open(audio_file, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            f.write(chunk)
+
+            cover_file = None
+            if request.direct_cover_url and request.direct_cover_url.startswith("http"):
+                cover_file = extractor_service.temp_dir / f"{song_id}.jpg"
+                try:
+                    with requests.get(request.direct_cover_url, headers=headers, timeout=10) as cr:
+                        if cr.status_code == 200:
+                            with open(cover_file, "wb") as cf:
+                                cf.write(cr.content)
+                        else:
+                            cover_file = None
+                except Exception:
+                    cover_file = None
+
+            title = request.custom_title or "TikTok Sound"
+            artist = request.custom_artist or "TikTok Creator"
+            from app.services.extractor import clean_media_title
+            cleaned_title = clean_media_title(title)
+
+            extracted_items = [{
+                "id": song_id,
+                "title": cleaned_title,
+                "artist": artist,
+                "duration": request.duration or 0,
+                "source_type": "tiktok",
+                "original_url": request.url,
+                "audio_file": audio_file,
+                "cover_file": cover_file,
+            }]
+        else:
+            extracted_items = extractor_service.extract_and_download(request.url)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi trích xuất đa phương tiện: {str(e)}")
+
 
     if not extracted_items:
         raise HTTPException(status_code=400, detail="Không thể bóc tách nội dung từ đường dẫn này.")

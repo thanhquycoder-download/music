@@ -6,6 +6,10 @@ class ExtractRequest(BaseModel):
     url: str
     custom_title: Optional[str] = None
     custom_artist: Optional[str] = None
+    direct_audio_url: Optional[str] = None
+    direct_cover_url: Optional[str] = None
+    duration: Optional[int] = 0
+
 
 class SongResponse(BaseModel):
     id: str

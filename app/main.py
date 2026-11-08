@@ -50,47 +50,13 @@ def health_check():
         "status": "online",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
-        "commit": "fast-tikwm-direct-v3",
+        "commit": "fast-tikwm-direct-v4",
         "docs": "/docs"
     }
 
-@app.get("/api/test-tikwm")
-def test_tikwm(url: str):
-    import requests
-    results = {}
-    
-    # Test 1: tikwm with curl user-agent
-    try:
-        r1 = requests.get("https://www.tikwm.com/api/", params={"url": url}, headers={"User-Agent": "curl/8.0.0"}, timeout=6)
-        results["tikwm_curl"] = {"status": r1.status_code, "len": len(r1.text), "preview": r1.text[:100]}
-    except Exception as e:
-        results["tikwm_curl"] = str(e)
-
-    # Test 2: tikwm.com without www
-    try:
-        r2 = requests.post("https://tikwm.com/api/", data={"url": url}, timeout=6)
-        results["tikwm_no_www"] = {"status": r2.status_code, "len": len(r2.text), "preview": r2.text[:100]}
-    except Exception as e:
-        results["tikwm_no_www"] = str(e)
-
-    # Test 3: tmate / tikmate
-    try:
-        r3 = requests.post("https://api.tikmate.app/api/lookup", data={"url": url}, timeout=6)
-        results["tikmate"] = {"status": r3.status_code, "len": len(r3.text), "preview": r3.text[:100]}
-    except Exception as e:
-        results["tikmate"] = str(e)
-
-    # Test 4: LoKa / Douyin TikWM mirror
-    try:
-        r4 = requests.get("https://api2.tikwm.com/api/", params={"url": url}, timeout=6)
-        results["api2_tikwm"] = {"status": r4.status_code, "len": len(r4.text), "preview": r4.text[:100]}
-    except Exception as e:
-        results["api2_tikwm"] = str(e)
-
-    return results
-
 # Phục vụ file media trực tiếp (âm thanh và ảnh bìa) với tốc độ cao, hỗ trợ Range Streaming
 app.mount("/media", StaticFiles(directory=str(settings.MEDIA_DIR)), name="media")
+
 
 
 
