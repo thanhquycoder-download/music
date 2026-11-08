@@ -57,26 +57,37 @@ def health_check():
 @app.get("/api/test-tikwm")
 def test_tikwm(url: str):
     import requests
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://www.tiktok.com/"
-    }
+    results = {}
+    
+    # Test 1: tikwm with curl user-agent
     try:
-        r_get = requests.get("https://www.tikwm.com/api/", params={"url": url}, headers=headers, timeout=10)
-        get_json = r_get.json() if r_get.status_code == 200 else r_get.text
+        r1 = requests.get("https://www.tikwm.com/api/", params={"url": url}, headers={"User-Agent": "curl/8.0.0"}, timeout=6)
+        results["tikwm_curl"] = {"status": r1.status_code, "len": len(r1.text), "preview": r1.text[:100]}
     except Exception as e:
-        get_json = f"GET Error: {e}"
+        results["tikwm_curl"] = str(e)
 
+    # Test 2: tikwm.com without www
     try:
-        r_post = requests.post("https://www.tikwm.com/api/", data={"url": url}, headers=headers, timeout=10)
-        post_json = r_post.json() if r_post.status_code == 200 else r_post.text
+        r2 = requests.post("https://tikwm.com/api/", data={"url": url}, timeout=6)
+        results["tikwm_no_www"] = {"status": r2.status_code, "len": len(r2.text), "preview": r2.text[:100]}
     except Exception as e:
-        post_json = f"POST Error: {e}"
+        results["tikwm_no_www"] = str(e)
 
-    return {
-        "get_result": get_json,
-        "post_result": post_json
-    }
+    # Test 3: tmate / tikmate
+    try:
+        r3 = requests.post("https://api.tikmate.app/api/lookup", data={"url": url}, timeout=6)
+        results["tikmate"] = {"status": r3.status_code, "len": len(r3.text), "preview": r3.text[:100]}
+    except Exception as e:
+        results["tikmate"] = str(e)
+
+    # Test 4: LoKa / Douyin TikWM mirror
+    try:
+        r4 = requests.get("https://api2.tikwm.com/api/", params={"url": url}, timeout=6)
+        results["api2_tikwm"] = {"status": r4.status_code, "len": len(r4.text), "preview": r4.text[:100]}
+    except Exception as e:
+        results["api2_tikwm"] = str(e)
+
+    return results
 
 # Phục vụ file media trực tiếp (âm thanh và ảnh bìa) với tốc độ cao, hỗ trợ Range Streaming
 app.mount("/media", StaticFiles(directory=str(settings.MEDIA_DIR)), name="media")
