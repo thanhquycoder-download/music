@@ -3,6 +3,7 @@ import re
 import uuid
 import subprocess
 import requests
+from urllib.parse import urljoin
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 import yt_dlp
@@ -63,10 +64,16 @@ class MediaExtractorService:
     def _extract_tiktok_direct(self, url: str) -> Optional[List[Dict[str, Any]]]:
         """
         Trích xuất trực tiếp link TikTok qua TikWM API để vượt qua challenge bot của TikTok,
-        lấy thẳng link audio MP3 và ảnh cover trong tích tắc.
+        lấy thẳng link audio MP3 và ảnh cover trong tích tắc (chuẩn theo demo.py).
         """
         try:
-            res = requests.post("https://www.tikwm.com/api/", data={"url": url}, timeout=10)
+            api_endpoint = "https://www.tikwm.com/api/"
+            params = {"url": url}
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://www.tiktok.com/"
+            }
+            res = requests.get(api_endpoint, params=params, headers=headers, timeout=12)
             if res.status_code == 200:
                 body = res.json()
                 if body.get("code") == 0 and "data" in body:
@@ -79,31 +86,35 @@ class MediaExtractorService:
                     duration = int(data.get("duration") or music_info.get("duration") or 0)
                     song_id = str(uuid.uuid4())
 
-                    # Tải file âm thanh (hỗ trợ stream các bản Nonstop/Mix dài trên 20MB)
+                    # Lấy link MP3 trực tiếp
                     audio_stream_url = data.get("music") or music_info.get("play")
+                    if not audio_stream_url:
+                        audio_stream_url = data.get("play")
                     if not audio_stream_url:
                         return None
 
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        "Referer": "https://www.tiktok.com/"
-                    }
+                    if audio_stream_url.startswith("/"):
+                        audio_stream_url = urljoin("https://www.tikwm.com", audio_stream_url)
+
                     audio_file = self.temp_dir / f"{song_id}.mp3"
-                    with requests.get(audio_stream_url, headers=headers, stream=True, timeout=120) as audio_res:
+                    with requests.get(audio_stream_url, headers=headers, stream=True, timeout=60) as audio_res:
                         audio_res.raise_for_status()
                         with open(audio_file, "wb") as f:
-                            for chunk in audio_res.iter_content(chunk_size=1024 * 512):
+                            for chunk in audio_res.iter_content(chunk_size=1024 * 1024):
                                 if chunk:
                                     f.write(chunk)
 
-                    # Tối ưu kích thước: Nếu file âm thanh lớn hơn 18MB, nén nhanh sang 96k để upload lên GitHub trong 3 giây
-                    if audio_file.exists() and audio_file.stat().st_size > 18 * 1024 * 1024:
+                    # Tối ưu kích thước: Nếu file lớn hơn 15MB (Nonstop dài), nén nhanh để tải lên GitHub trong 3s
+                    if audio_file.exists() and audio_file.stat().st_size > 15 * 1024 * 1024:
                         compressed_file = self.temp_dir / f"{song_id}_opt.mp3"
                         try:
+                            opt_kbps = 96
+                            if duration > 0:
+                                opt_kbps = max(48, min(96, int((13.5 * 1024 * 8) / duration)))
                             subprocess.run([
                                 settings.ffmpeg_binary, "-y", "-i", str(audio_file),
-                                "-vn", "-threads", "0", "-b:a", "96k", str(compressed_file)
-                            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+                                "-vn", "-threads", "0", "-b:a", f"{opt_kbps}k", str(compressed_file)
+                            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=25)
                             if compressed_file.exists() and compressed_file.stat().st_size > 0:
                                 audio_file.unlink()
                                 compressed_file.rename(audio_file)
@@ -114,9 +125,11 @@ class MediaExtractorService:
                     cover_file = None
                     cover_url = data.get("cover") or data.get("origin_cover")
                     if cover_url:
+                        if cover_url.startswith("/"):
+                            cover_url = urljoin("https://www.tikwm.com", cover_url)
                         cover_file = self.temp_dir / f"{song_id}.jpg"
                         try:
-                            with requests.get(cover_url, headers=headers, timeout=20) as cover_res:
+                            with requests.get(cover_url, headers=headers, timeout=10) as cover_res:
                                 with open(cover_file, "wb") as f:
                                     f.write(cover_res.content)
                         except Exception:
@@ -133,7 +146,7 @@ class MediaExtractorService:
                         "cover_file": cover_file,
                     }]
         except Exception as e:
-            print(f"[TikTokExtractor] TikWM fallback: {e}")
+            print(f"[TikTokExtractor] TikWM error: {e}")
         return None
 
     def extract_and_download(self, url: str) -> List[Dict[str, Any]]:
@@ -150,13 +163,16 @@ class MediaExtractorService:
                 return tiktok_result
         
         ydl_opts = {
-            'format': 'ba[ext=m4a]/ba[ext=mp3]/ba/b[height<=360]/best',
+            'format': 'ba[ext=m4a]/ba[ext=mp3]/ba/251/140/b[height<=360]/best',
             'outtmpl': str(self.temp_dir / '%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
             'overwrites': True,
             'extract_flat': False,
             'geo_bypass': True,
+            'socket_timeout': 15,
+            'retries': 2,
+            'fragment_retries': 2,
             'buffersize': 1024 * 1024,
             'match_filter': yt_dlp.utils.match_filter_func('!is_live'),
             'extractor_args': {

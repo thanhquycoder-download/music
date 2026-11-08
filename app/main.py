@@ -72,6 +72,11 @@ def check_app_version():
         "published_at": "2026-11-07"
     }
 
+# Phục vụ file media cục bộ (fallback khi lưu trữ đám mây CDN gặp sự cố)
+MEDIA_DIR = Path(__file__).resolve().parent.parent / "media"
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
+
 # Phục vụ ứng dụng Thành Quý Music Web/PWA trực tiếp tại trang chủ
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 if WEB_DIR.exists():
