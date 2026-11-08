@@ -18,7 +18,7 @@ def fetch_synced_lyrics(track_name: str, artist_name: str = "") -> Optional[str]
             "User-Agent": "MusicEcosystem/1.0 (https://github.com/phanthanhquy917/music)"
         }
 
-        res = requests.get("https://lrclib.net/api/get", params=params, headers=headers, timeout=5)
+        res = requests.get("https://lrclib.net/api/get", params=params, headers=headers, timeout=1.5)
         if res.status_code == 200:
             data = res.json()
             synced = data.get("syncedLyrics")
@@ -28,7 +28,7 @@ def fetch_synced_lyrics(track_name: str, artist_name: str = "") -> Optional[str]
 
         # 2. Thử tìm kiếm fuzzy search
         query = f"{track_name} {artist_name}".strip()
-        search_res = requests.get("https://lrclib.net/api/search", params={"q": query}, headers=headers, timeout=5)
+        search_res = requests.get("https://lrclib.net/api/search", params={"q": query}, headers=headers, timeout=1.5)
         if search_res.status_code == 200:
             items = search_res.json()
             if items and isinstance(items, list):

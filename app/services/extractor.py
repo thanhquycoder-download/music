@@ -96,6 +96,20 @@ class MediaExtractorService:
                                 if chunk:
                                     f.write(chunk)
 
+                    # Tối ưu kích thước: Nếu file âm thanh lớn hơn 18MB, nén nhanh sang 96k để upload lên GitHub trong 3 giây
+                    if audio_file.exists() and audio_file.stat().st_size > 18 * 1024 * 1024:
+                        compressed_file = self.temp_dir / f"{song_id}_opt.mp3"
+                        try:
+                            subprocess.run([
+                                settings.ffmpeg_binary, "-y", "-i", str(audio_file),
+                                "-vn", "-threads", "0", "-b:a", "96k", str(compressed_file)
+                            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+                            if compressed_file.exists() and compressed_file.stat().st_size > 0:
+                                audio_file.unlink()
+                                compressed_file.rename(audio_file)
+                        except Exception:
+                            pass
+
                     # Tải ảnh thumbnail
                     cover_file = None
                     cover_url = data.get("cover") or data.get("origin_cover")
