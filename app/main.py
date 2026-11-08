@@ -50,6 +50,7 @@ def health_check():
         "status": "online",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
+        "commit": "45a5bd6-v2",
         "docs": "/docs"
     }
 
