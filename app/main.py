@@ -54,8 +54,34 @@ def health_check():
         "docs": "/docs"
     }
 
+@app.get("/api/test-tikwm")
+def test_tikwm(url: str):
+    import requests
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.tiktok.com/"
+    }
+    try:
+        r_get = requests.get("https://www.tikwm.com/api/", params={"url": url}, headers=headers, timeout=10)
+        get_json = r_get.json() if r_get.status_code == 200 else r_get.text
+    except Exception as e:
+        get_json = f"GET Error: {e}"
+
+    try:
+        r_post = requests.post("https://www.tikwm.com/api/", data={"url": url}, headers=headers, timeout=10)
+        post_json = r_post.json() if r_post.status_code == 200 else r_post.text
+    except Exception as e:
+        post_json = f"POST Error: {e}"
+
+    return {
+        "get_result": get_json,
+        "post_result": post_json
+    }
+
 # Phục vụ file media trực tiếp (âm thanh và ảnh bìa) với tốc độ cao, hỗ trợ Range Streaming
 app.mount("/media", StaticFiles(directory=str(settings.MEDIA_DIR)), name="media")
+
+
 
 
 @app.get("/api/app/version")
