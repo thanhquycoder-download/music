@@ -136,17 +136,18 @@ class MediaExtractorService:
                 return tiktok_result
         
         ydl_opts = {
-            'format': 'ba/b[height<=360]/18/best',
+            'format': 'ba/best',
             'outtmpl': str(self.temp_dir / '%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
             'overwrites': True,
             'extract_flat': False,
+            'geo_bypass': True,
             'buffersize': 1024 * 1024,
             'match_filter': yt_dlp.utils.match_filter_func('!is_live'),
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['mweb', 'android', 'web']
+                    'player_client': ['android', 'ios']
                 }
             },
         }
