@@ -5,6 +5,7 @@ from app.services.ai_music_service import ai_music_service
 from app.services.extractor import MediaExtractorService
 from app.services.github_storage import GitHubStorageService
 from app.services.lyrics_service import fetch_synced_lyrics
+from app.services.search_service import build_search_keywords
 from app.database import get_connection
 from app.models import SongModel
 from app.schemas import SongResponse
@@ -89,11 +90,14 @@ def auto_import_song(payload: AutoImportRequest):
                 # 4. AI Phân loại thể loại / Danh mục
                 classification = ai_music_service.classify_genre_and_mood(item["title"], item["artist"])
 
-                # 5. Lưu vào SQLite Database
+                # 5. Tạo từ khóa tìm kiếm tiếng Việt không dấu
+                keywords = build_search_keywords(item["title"], item["artist"])
+
+                # 6. Lưu vào SQLite Database
                 conn.execute('''
                     INSERT OR REPLACE INTO songs 
-                    (id, title, artist, duration, audio_url, cover_url, source_type, original_url, lyrics)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, title, artist, duration, audio_url, cover_url, source_type, original_url, search_keywords, lyrics)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     song_id,
                     item["title"],
@@ -103,6 +107,7 @@ def auto_import_song(payload: AutoImportRequest):
                     cover_url,
                     item["source_type"],
                     item["original_url"],
+                    keywords,
                     lyrics
                 ))
                 conn.commit()
