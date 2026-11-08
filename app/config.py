@@ -23,8 +23,15 @@ class Settings:
     _raw_db: str = os.getenv("DATABASE_PATH", "music.db")
     DATABASE_PATH: str = str((BASE_DIR / _raw_db).resolve() if not Path(_raw_db).is_absolute() else Path(_raw_db).resolve())
 
-    # FFmpeg binary path (nếu cần custom)
+    # FFmpeg binary path (tự động nhận diện trên cả Windows và Linux Docker)
     FFMPEG_PATH: str = os.getenv("FFMPEG_PATH", "")
+
+    @property
+    def ffmpeg_binary(self) -> str:
+        import shutil
+        if self.FFMPEG_PATH and os.path.exists(self.FFMPEG_PATH):
+            return self.FFMPEG_PATH
+        return shutil.which("ffmpeg") or "ffmpeg"
 
     # Temporary directory for audio processing (sẽ được dọn sạch sau khi upload)
     TEMP_DIR: Path = BASE_DIR / "temp"

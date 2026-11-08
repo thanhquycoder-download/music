@@ -40,10 +40,10 @@ class GitHubStorageService:
     def get_cdn_url(self, repo_path: str, file_size: int = 0) -> str:
         """
         Lựa chọn CDN tối ưu:
-        jsDelivr có giới hạn tối đa 20MB (file lớn hơn sẽ bị 403 Forbidden).
-        Do đó nếu file >= 19MB hoặc là bản thu dài, tự động dùng raw.githubusercontent.com.
+        - Audio (.mp3): Dùng raw.githubusercontent.com (Fastly CDN hỗ trợ Range Tua mượt mà, không giới hạn 20MB, không bị 403).
+        - Images (.jpg, .png): Dùng jsDelivr CDN để nén và tải ảnh thumbnail nhanh.
         """
-        if file_size >= 19 * 1024 * 1024:
+        if repo_path.lower().endswith(('.mp3', '.m4a', '.wav')) or file_size >= 19 * 1024 * 1024:
             return self.get_raw_github_url(repo_path)
         return self.get_jsdelivr_url(repo_path)
 

@@ -79,15 +79,22 @@ class MediaExtractorService:
                     duration = int(data.get("duration") or music_info.get("duration") or 0)
                     song_id = str(uuid.uuid4())
 
-                    # Tải file âm thanh
+                    # Tải file âm thanh (hỗ trợ stream các bản Nonstop/Mix dài trên 20MB)
                     audio_stream_url = data.get("music") or music_info.get("play")
                     if not audio_stream_url:
                         return None
 
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Referer": "https://www.tiktok.com/"
+                    }
                     audio_file = self.temp_dir / f"{song_id}.mp3"
-                    audio_res = requests.get(audio_stream_url, timeout=30)
-                    with open(audio_file, "wb") as f:
-                        f.write(audio_res.content)
+                    with requests.get(audio_stream_url, headers=headers, stream=True, timeout=120) as audio_res:
+                        audio_res.raise_for_status()
+                        with open(audio_file, "wb") as f:
+                            for chunk in audio_res.iter_content(chunk_size=1024 * 512):
+                                if chunk:
+                                    f.write(chunk)
 
                     # Tải ảnh thumbnail
                     cover_file = None
@@ -95,9 +102,9 @@ class MediaExtractorService:
                     if cover_url:
                         cover_file = self.temp_dir / f"{song_id}.jpg"
                         try:
-                            cover_res = requests.get(cover_url, timeout=15)
-                            with open(cover_file, "wb") as f:
-                                f.write(cover_res.content)
+                            with requests.get(cover_url, headers=headers, timeout=20) as cover_res:
+                                with open(cover_file, "wb") as f:
+                                    f.write(cover_res.content)
                         except Exception:
                             cover_file = None
 
@@ -176,7 +183,7 @@ class MediaExtractorService:
                 raw_file = raw_files[0]
 
                 final_mp3 = self.temp_dir / f"{song_id}.mp3"
-                ffmpeg_bin = settings.FFMPEG_PATH or "ffmpeg"
+                ffmpeg_bin = settings.ffmpeg_binary
 
                 # Tính bitrate chuẩn xác 1 bước:
                 # Nếu bài hát dài > 25 phút (>1500s), tự tính bitrate để file luôn < 19MB (tương thích GitHub API & CDN)
